@@ -5,7 +5,12 @@ edition = "2021"
 
 [dependencies]
 axum = "0.8.1"
-diesel = { version = "2.2.0", features = ["postgres"] }
+chrono = "0.4.39"
+diesel = { version = "2.2.0", features = ["postgres", "chrono", "r2d2", "uuid"] }
 dotenvy = "0.15"
 serde = { version = "1.0.217", features = ["derive"] }
+serde_valid = "1.0.5"
+thiserror = "2.0.11"
 tokio = { version = "1.43.0", features = ["full"] }
+uuid = "1.12.1"
+validator = {version = "0.20.0", features = ["derive"]}

@@ -1,48 +1,94 @@
-use crate::domains::user::use_case::{self, user::RegisterUserUseCase};
-// use crate::shared::errors::AppError;
 use axum::{
-    // extract::State,
+    extract::{Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
-use std::{sync::Arc, vec};
+use std::sync::Arc;
+use validator::{Validate, ValidationErrors};
 
-#[derive(Deserialize)]
-pub struct RegisterUserRequest {
-    pub email: String,
-    // pub password: String,
+use crate::{
+    domains::user::dto::{request::GetUserListRequest, response::UserResponse},
+    shared::{app::AppState, errors::ErrorResponse, response::HttpResponse},
+};
+
+pub async fn list(
+    State(state): State<Arc<AppState>>,
+    Query(q): Query<GetUserListRequest>,
+) -> Result<Json<HttpResponse<Vec<UserResponse>>>, (StatusCode, Json<ErrorResponse<ValidationErrors>>)> {
+    if let Err(e) = q.validate() {
+        println!("{:}", e);
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                String::from("Invalid query parameters"),
+                Some(e),
+            )),
+        ));
+    }
+    match state.user_use_case.list(state.db.clone(), q) {
+        Ok(data) => Ok(Json(HttpResponse::new(
+            StatusCode::OK,
+            String::from("Success"),
+            data.into_iter()
+                .map(|user| UserResponse::new(user))
+                .collect(),
+        ))),
+        Err(_) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                String::from("Invalid query parameters"),
+                None,
+            )),
+        )),
+    }
 }
 
-#[derive(Serialize)]
-pub struct RegisterUserResponse {
-    pub user_id: String,
-    pub message: String,
-}
-
-pub async fn register_user(
-    Json(payload): Json<RegisterUserRequest>,
-) -> Result<Json<RegisterUserResponse>, (StatusCode, String)> {
-    print!("{}", payload.email);
-    match use_case::user::RegisterUserUseCase::execute() {
-        Ok(d) => Ok(Json(RegisterUserResponse {
-            user_id: d,
-            message: "User registered successfully".to_string(),
-        })),
+pub async fn create(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<String>, (StatusCode, String)> {
+    match state.user_use_case.create() {
+        Ok(d) => Ok(Json(d)),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
 }
 
-pub async fn list() -> Result<Json<Vec<String>>, (StatusCode, String)> {
-    Ok(Json(vec!["test".to_string()]))
+pub async fn get_one(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<String>, (StatusCode, String)> {
+    match state.user_use_case.get() {
+        Ok(d) => Ok(Json(d)),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    }
+}
+
+pub async fn delete_one(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<String>, (StatusCode, String)> {
+    match state.user_use_case.delete() {
+        Ok(d) => Ok(Json(d)),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    }
+}
+
+pub async fn update_one(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<String>, (StatusCode, String)> {
+    match state.user_use_case.update() {
+        Ok(d) => Ok(Json(d)),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    }
 }
 
 // Function to create user routes
-pub fn user_routes(use_case: Arc<RegisterUserUseCase>) -> Router {
+pub fn user_routes(state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(list))
-        .route("/register", post(register_user))
-        .route("/{id}", get(use_case::user::RegisterUserUseCase::execute()))
-        .with_state(use_case)
+        .route("/", post(create))
+        .route("/{id}", get(get_one))
+        .route("/{id}", delete(delete_one))
+        .route("/{id}", put(update_one))
+        .with_state(state)
 }

@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -37,3 +37,14 @@ impl<E> ErrorResponse<E> {
 //     }
 //     Ok(res)
 // }
+
+pub fn handle_not_found() -> impl IntoResponse{
+    (
+        StatusCode::NOT_FOUND,
+        Json(ErrorResponse::<String>::new(
+            StatusCode::NOT_FOUND,
+            String::from("Not found"),
+            None,
+        )),
+    )
+}

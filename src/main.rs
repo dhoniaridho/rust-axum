@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 
+use shared::errors::handle_not_found;
 use thiserror::Error;
 mod adapters;
 mod app;
@@ -19,6 +20,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .merge(create_routes());
+
+    let app = app.fallback(axum::routing::any(|| async { handle_not_found() }));
 
     #[derive(Debug, Error)]
     pub enum ServerError {

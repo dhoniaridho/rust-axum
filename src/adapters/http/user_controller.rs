@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::State,
     http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
@@ -9,13 +9,16 @@ use validator::{Validate, ValidationErrors};
 
 use crate::{
     domains::user::dto::{request::GetUserListRequest, response::UserResponse},
-    shared::{app::AppState, errors::ErrorResponse, response::HttpResponse},
+    shared::{app::AppState, errors::ErrorResponse, extractor::Qs, response::HttpResponse},
 };
 
 pub async fn list(
     State(state): State<Arc<AppState>>,
-    Query(q): Query<GetUserListRequest>,
-) -> Result<Json<HttpResponse<Vec<UserResponse>>>, (StatusCode, Json<ErrorResponse<ValidationErrors>>)> {
+    Qs(q): Qs<GetUserListRequest>,
+) -> Result<
+    Json<HttpResponse<Vec<UserResponse>>>,
+    (StatusCode, Json<ErrorResponse<ValidationErrors>>),
+> {
     if let Err(e) = q.validate() {
         println!("{:}", e);
         return Err((

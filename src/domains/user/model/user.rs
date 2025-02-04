@@ -2,7 +2,10 @@ use diesel::prelude::*;
 use uuid::Uuid;
 use chrono::NaiveDateTime;
 
-#[derive(Queryable)]
+use crate::schema::users;
+
+#[derive(Queryable, Insertable, AsChangeset)]
+#[diesel(table_name = users)]
 pub struct User {
     pub id: Uuid,
     pub email: String,

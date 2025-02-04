@@ -35,7 +35,7 @@ where
                 axum::Json(json!(HttpResponse::new(
                     StatusCode::BAD_REQUEST,
                     e.to_string(),
-                    Value::Null,
+                    Some(Value::Null),
                 ))),
             )),
         }

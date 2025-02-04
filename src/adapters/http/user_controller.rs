@@ -1,56 +1,61 @@
 use axum::{
-    extract::State,
+    body::Body,
+    extract::{Path, State},
     http::StatusCode,
     routing::{delete, get, post, put},
     Json, Router,
 };
+use serde_json::Value;
 use std::sync::Arc;
+use uuid::Uuid;
 use validator::{Validate, ValidationErrors};
 
 use crate::{
-    domains::user::dto::{request::GetUserListRequest, response::UserResponse},
-    shared::{app::AppState, errors::ErrorResponse, extractor::Qs, response::HttpResponse},
+    domains::user::{
+        dto::{request::GetUserListRequest, response::UserResponse},
+        repository::user_repository::UserRepository,
+        use_case::user::UserUseCase,
+    },
+    shared::{app::AppState, dto::Paginated, extractor::Qs, response::HttpResponse},
 };
 
 pub async fn list(
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<UserState>>,
     Qs(q): Qs<GetUserListRequest>,
 ) -> Result<
-    Json<HttpResponse<Vec<UserResponse>>>,
-    (StatusCode, Json<ErrorResponse<ValidationErrors>>),
+    Json<HttpResponse<Paginated<UserResponse>>>,
+    (StatusCode, Json<HttpResponse<ValidationErrors>>),
 > {
     if let Err(e) = q.validate() {
         println!("{:}", e);
-        return Err((
+        return Err(HttpResponse::err(
             StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                StatusCode::BAD_REQUEST,
-                String::from("Invalid query parameters"),
-                Some(e),
-            )),
+            String::from("Invalid query parameters"),
+            Some(e),
         ));
     }
-    match state.user_use_case.list(state.db.clone(), q) {
+    match state.user_use_case.list(q) {
         Ok(data) => Ok(Json(HttpResponse::new(
             StatusCode::OK,
             String::from("Success"),
-            data.into_iter()
-                .map(|user| UserResponse::new(user))
-                .collect(),
-        ))),
-        Err(_) => Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                StatusCode::BAD_REQUEST,
-                String::from("Invalid query parameters"),
-                None,
+            Some(Paginated::new(
+                data.data
+                    .into_iter()
+                    .map(|user| UserResponse::new(user))
+                    .collect(),
+                data.meta,
             )),
+        ))),
+        Err(_) => Err(HttpResponse::err(
+            StatusCode::BAD_REQUEST,
+            String::from("Invalid query parameters"),
+            None,
         )),
     }
 }
 
 pub async fn create(
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<UserState>>,
 ) -> Result<Json<String>, (StatusCode, String)> {
     match state.user_use_case.create() {
         Ok(d) => Ok(Json(d)),
@@ -59,25 +64,56 @@ pub async fn create(
 }
 
 pub async fn get_one(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<String>, (StatusCode, String)> {
-    match state.user_use_case.get() {
-        Ok(d) => Ok(Json(d)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    State(state): State<Arc<UserState>>,
+    Path(id): Path<String>,
+) -> Result<Json<HttpResponse<UserResponse>>, (StatusCode, Json<HttpResponse<Option<Value>>>)> {
+    match Uuid::parse_str(&id) {
+        Ok(uuid) => match state.user_use_case.get(uuid) {
+            Ok(d) => Ok(HttpResponse::ok(
+                StatusCode::OK,
+                String::from("Success"),
+                Some(UserResponse::new(d)),
+            )),
+            Err(e) => Err(HttpResponse::err(StatusCode::NOT_FOUND, e, None)),
+        },
+        Err(e) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(HttpResponse::new(
+                StatusCode::BAD_REQUEST,
+                e.to_string(),
+                None,
+            )),
+        )),
     }
 }
 
 pub async fn delete_one(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<String>, (StatusCode, String)> {
-    match state.user_use_case.delete() {
-        Ok(d) => Ok(Json(d)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    State(state): State<Arc<UserState>>,
+    Path(id): Path<String>,
+) -> Result<Json<HttpResponse<Value>>, (StatusCode, Json<HttpResponse<Option<Value>>>)> {
+    match Uuid::parse_str(&id) {
+        Ok(id) => match state.user_use_case.delete(id) {
+            Ok(_) => Ok(HttpResponse::ok(
+                StatusCode::OK,
+                String::from("Success"),
+                None,
+            )),
+            Err(e) => Err(HttpResponse::err(
+                StatusCode::BAD_REQUEST,
+                e.to_string(),
+                None,
+            )),
+        },
+        Err(e) => Err(HttpResponse::err(
+            StatusCode::BAD_REQUEST,
+            e.to_string(),
+            None,
+        )),
     }
 }
 
 pub async fn update_one(
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<UserState>>,
 ) -> Result<Json<String>, (StatusCode, String)> {
     match state.user_use_case.update() {
         Ok(d) => Ok(Json(d)),
@@ -85,8 +121,15 @@ pub async fn update_one(
     }
 }
 
+pub struct UserState {
+    pub user_use_case: Arc<UserUseCase>,
+}
+
 // Function to create user routes
 pub fn user_routes(state: Arc<AppState>) -> Router {
+    let user_repository = Arc::new(UserRepository::new(Arc::clone(&state.db)));
+    let user_use_case = Arc::new(UserUseCase::new(user_repository));
+    let state = Arc::new(UserState { user_use_case });
     Router::new()
         .route("/", get(list))
         .route("/", post(create))

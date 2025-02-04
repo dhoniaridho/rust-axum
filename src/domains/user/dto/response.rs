@@ -9,7 +9,6 @@ pub struct UserResponse {
     pub email: String,
     pub username: String,
     pub password: String,
-    pub deleted_at: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -22,7 +21,6 @@ impl UserResponse {
             email: model.email,
             username: model.username,
             password: model.password,
-            deleted_at: model.deleted_at.map(|d| d.to_string()).unwrap_or_default(),
             created_at: model.created_at.to_string(),
             updated_at: model.updated_at.to_string(),
         }

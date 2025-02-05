@@ -1,9 +1,8 @@
 use axum::{
-    body::Body,
-    extract::{Path, State},
+    extract::{Json, Path, State},
     http::StatusCode,
     routing::{delete, get, post, put},
-    Json, Router,
+    Router,
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -12,7 +11,10 @@ use validator::{Validate, ValidationErrors};
 
 use crate::{
     domains::user::{
-        dto::{request::GetUserListRequest, response::UserResponse},
+        dto::{
+            request::{CreateUserBodyRequest, GetUserListRequest, UpdateUserBodyRequest},
+            response::UserResponse,
+        },
         repository::user_repository::UserRepository,
         use_case::user::UserUseCase,
     },
@@ -56,9 +58,14 @@ pub async fn list(
 
 pub async fn create(
     State(state): State<Arc<UserState>>,
-) -> Result<Json<String>, (StatusCode, String)> {
-    match state.user_use_case.create() {
-        Ok(d) => Ok(Json(d)),
+    Json(body): Json<CreateUserBodyRequest>,
+) -> Result<Json<HttpResponse<UserResponse>>, (StatusCode, String)> {
+    match state.user_use_case.create(body) {
+        Ok(d) => Ok(HttpResponse::ok(
+            StatusCode::OK,
+            String::from("Success"),
+            Some(UserResponse::new(d)),
+        )),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
 }
@@ -113,11 +120,20 @@ pub async fn delete_one(
 }
 
 pub async fn update_one(
+    Path(id): Path<String>,
     State(state): State<Arc<UserState>>,
-) -> Result<Json<String>, (StatusCode, String)> {
-    match state.user_use_case.update() {
-        Ok(d) => Ok(Json(d)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    Json(body): Json<UpdateUserBodyRequest>,
+) -> Result<Json<HttpResponse<UserResponse>>, (StatusCode, String)> {
+    match state
+        .user_use_case
+        .update(Uuid::parse_str(&id).unwrap(), body)
+    {
+        Ok(d) => Ok(HttpResponse::ok(
+            StatusCode::OK,
+            String::from("Success"),
+            Some(UserResponse::new(d)),
+        )),
+        Err(e) => Err((StatusCode::BAD_REQUEST, e)),
     }
 }
 

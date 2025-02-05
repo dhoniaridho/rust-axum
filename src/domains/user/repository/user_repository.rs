@@ -3,7 +3,10 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
-    domains::user::{dto::request::GetUserListRequest, model::user::User},
+    domains::user::{
+        dto::request::GetUserListRequest,
+        model::user::{PartialUser, User},
+    },
     infrasturcture::database::DB,
     shared::dto::{Meta, Paginated},
 };
@@ -66,16 +69,17 @@ impl UserRepository {
         Ok(None)
     }
 
-    pub fn update(&self, param: Uuid, data: User) -> Result<User, String> {
+    pub fn update(&self, param: Uuid, data: PartialUser) -> Result<User, String> {
         use crate::schema::users::dsl::*;
         use diesel::prelude::*;
         let i = id.eq(param);
+
         let mut conn = Arc::clone(&self.db.pool).get().unwrap();
         match diesel::update(users.filter(i))
             .set(&data)
             .execute(&mut conn)
         {
-            Ok(_) => Ok(data),
+            Ok(_) => Ok(users.filter(i).first::<User>(&mut conn).unwrap()),
             Err(e) => Err(e.to_string()),
         }
     }

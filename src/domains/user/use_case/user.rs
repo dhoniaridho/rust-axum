@@ -4,7 +4,8 @@ use uuid::Uuid;
 
 use crate::{
     domains::user::{
-        dto::request::GetUserListRequest, model::user::User,
+        dto::request::{CreateUserBodyRequest, GetUserListRequest, UpdateUserBodyRequest},
+        model::user::User,
         repository::user_repository::UserRepository,
     },
     shared::dto::Paginated,
@@ -36,10 +37,16 @@ impl UserUseCase {
             Err(e) => Err(e),
         }
     }
-    pub fn update(&self) -> Result<String, String> {
-        Ok("test".to_string())
+    pub fn update(&self, id: Uuid, data: UpdateUserBodyRequest) -> Result<User, String> {
+        match self.user_repository.update(id, data.to_model()) {
+            Ok(data) => Ok(data),
+            Err(e) => Err(e),
+        }
     }
-    pub fn create(&self) -> Result<String, String> {
-        Ok("test".to_string())
+    pub fn create(&self, data: CreateUserBodyRequest) -> Result<User, String> {
+        match self.user_repository.create(data.to_model()) {
+            Ok(data) => Ok(data),
+            Err(e) => Err(e),
+        }
     }
 }

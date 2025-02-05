@@ -4,15 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+uuid = { version = "1.12.1", features = ["v4"] }
 async-trait = "0.1.86"
 axum = "0.8.1"
 chrono = "0.4.39"
-diesel = { version = "2.2.0", features = ["postgres", "chrono", "r2d2", "uuid"] }
+diesel = { version = "2.2.0", features = [
+    "postgres",
+    "chrono",
+    "r2d2",
+    "uuid",
+] }
 dotenvy = "0.15"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = "1.0.138"
 serde_urlencoded = "0.7.1"
 thiserror = "2.0.11"
 tokio = { version = "1.43.0", features = ["full"] }
-uuid = "1.12.1"
-validator = {version = "0.20.0", features = ["derive"]}
+validator = { version = "0.20.0", features = ["derive"] }
+bcrypt = "0.17.0"

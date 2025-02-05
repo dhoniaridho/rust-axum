@@ -8,7 +8,6 @@ pub struct UserResponse {
     pub name: String,
     pub email: String,
     pub username: String,
-    pub password: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -20,7 +19,6 @@ impl UserResponse {
             name: model.name,
             email: model.email,
             username: model.username,
-            password: model.password,
             created_at: model.created_at.to_string(),
             updated_at: model.updated_at.to_string(),
         }

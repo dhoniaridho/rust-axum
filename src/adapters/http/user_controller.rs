@@ -18,7 +18,12 @@ use crate::{
         repository::user_repository::UserRepository,
         use_case::user::UserUseCase,
     },
-    shared::{app::AppState, dto::Paginated, extractor::Qs, response::HttpResponse},
+    shared::{
+        app::AppState,
+        dto::Paginated,
+        extractor::{BodyJson, Qs},
+        response::HttpResponse,
+    },
 };
 
 pub async fn list(
@@ -58,15 +63,31 @@ pub async fn list(
 
 pub async fn create(
     State(state): State<Arc<UserState>>,
-    Json(body): Json<CreateUserBodyRequest>,
-) -> Result<Json<HttpResponse<UserResponse>>, (StatusCode, String)> {
+    BodyJson(body): BodyJson<CreateUserBodyRequest>,
+) -> Result<Json<HttpResponse<UserResponse>>, (StatusCode, Json<HttpResponse<ValidationErrors>>)> {
+    match body.validate() {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(HttpResponse::err(
+                StatusCode::BAD_REQUEST,
+                String::from("Invalid request body"),
+                Some(e),
+            ))
+        }
+    }
     match state.user_use_case.create(body) {
         Ok(d) => Ok(HttpResponse::ok(
             StatusCode::OK,
             String::from("Success"),
             Some(UserResponse::new(d)),
         )),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+        Err(e) => Err(
+            HttpResponse::err(
+                StatusCode::BAD_REQUEST,
+                String::from(e),
+                None,
+            ),
+        ),
     }
 }
 

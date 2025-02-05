@@ -17,13 +17,14 @@ pub struct CreateUserBodyRequest {
     #[validate(length(min = 4))]
     pub name: String,
 
-    #[validate(length(min = 4))]
+    #[validate(email(message = "invalid email"))]
+    #[validate(length(min = 4, message = "minimum 4 character"))]
     pub email: String,
 
-    #[validate(length(min = 4))]
+    #[validate(length(min = 4, message = "minimum 4 character"))]
     pub username: String,
 
-    #[validate(length(min = 4))]
+    #[validate(length(min = 8, message = "minimum 8 character"))]
     pub password: String,
 }
 
